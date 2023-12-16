@@ -2,6 +2,7 @@ use std::{error::Error, io, fs::OpenOptions, path::Path, process};
 use chrono::prelude::*;
 use csv::WriterBuilder;
 use serde::Serialize;
+use joblog::win::foo;
 
 #[derive(Serialize)]
 struct Row {
