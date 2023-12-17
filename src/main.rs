@@ -2,7 +2,7 @@ use std::{error::Error, io, fs::OpenOptions, path::Path, process};
 use chrono::prelude::*;
 use csv::WriterBuilder;
 use serde::Serialize;
-use joblog::win::foo;
+use dioxus::prelude::*;
 
 #[derive(Serialize)]
 struct Row {
@@ -70,4 +70,14 @@ fn write_record(now: String, project_name: String, add_comments: String) -> Resu
     }
     
     Ok(())
+}
+
+fn app(cx: Scope) -> Element {
+    let mut count = use_state(cx, || 0);
+
+    cx.render(rsx! {
+        h1{"High Five Counter: {count}"}
+        button{ onclick: move |_| count += 1, "Up High!"}
+        button{ onclick: move |_| count -= 1, "Down low!"}
+    })
 }
