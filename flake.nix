@@ -1,5 +1,5 @@
 {
-  description = "demoapp";
+  description = "joblog program";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -22,11 +22,31 @@
         rust-toolchain = (pkgs.rust-bin.fromRustupToolchainFile ./toolchain.toml);
 
         buildDeps = with pkgs; [
+          (lib.getLib gcc-unwrapped)
           pkg-config
-        ];
+          clang
+        ] ++ ( with pkgsCross; [ mingw32.buildPackages.gcc mingwW64.buildPackages.gcc ]);
+
+        mkPackage = rust-toolchain: pkgs.rustPlatform.buildRustPackage {
+          name = "joblog";
+          version = "0.1";
+          src = ./.;
+          buildInputs = buildDeps;
+          nativeBuildInputs = buildDeps;
+          cargoLock.lockFile = ./Cargo.lock;
+          meta = {
+            description = "A Rusty program to record Joblog with timestamps in csv";
+            license = "gpl3Plus";
+            mainprogram = "joblog";
+          };
+        };
 
         mkDevShell = rust-toolchain: pkgs.mkShell {
-          LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath buildDeps}:$LD_LIBRARY_PATH";
+          shellHook = ''
+            export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath buildDeps}:$LD_LIBRARY_PATH"
+            export PATH="$PATH:/home/$USER/.cargo/bin"
+            export CARGO_TARGET_X86_64_PC_WINDOWS_GNU_RUSTFLAGS="-L native=${pkgs.pkgsCross.mingwW64.buildPackages.gcc}/lib:${pkgs.pkgsCross.mingw32.buildPackages.gcc}/lib"
+          '';
           packages = buildDeps ++ [ rust-toolchain ];
         };
     in
@@ -37,6 +57,9 @@
       };
 
       formatter = pkgs.alejandra;
+
+      packages.default = self'.packages.joblog;
+      packages.joblog = (mkPackage "joblog");
 
       devShells.default = self'.devShells.msrv;
       devShells.msrv = (mkDevShell rust-toolchain);
