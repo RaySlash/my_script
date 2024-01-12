@@ -1,47 +1,47 @@
 {
+  description = "demoapp";
+
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-23.11";
-    flake-utils.url = "github:numtide/flake-utils";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    flake-parts.url = "github:hercules-ci/flake-parts";
+    rust-overlay.url = "github:oxalica/rust-overlay";
+    systems = {
+      url = "github:nix-systems/default";
+      flake = false;
+    };
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
-    flake-utils.lib.eachDefaultSystem (system:
-    let
-      pkgs = nixpkgs.legacyPackages.${system};
+  outputs = inputs@{ flake-parts, ... }:
+    flake-parts.lib.mkFlake { inherit inputs; } {
+      imports = [
+      ];
 
-      libraries = with pkgs;[
-        webkitgtk
-        gtk3
-        cairo
-        gdk-pixbuf
-        glib
-        dbus
-        openssl_3
-        librsvg
+      systems = import inputs.systems;
+      perSystem = { config, self', inputs', pkgs, system, ... }:
+      let
+        rust-toolchain = (pkgs.rust-bin.fromRustupToolchainFile ./toolchain.toml);
+
+        buildDeps = with pkgs; [
+          pkg-config
         ];
 
-      packages = with pkgs; [
-        curl
-        wget
-        rustc
-        cargo
-        pkg-config
-        dbus
-        openssl_3
-        glib
-        gtk3
-        libsoup
-        webkitgtk
-        librsvg
-        ];
+        mkDevShell = rust-toolchain: pkgs.mkShell {
+          LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath buildDeps}:$LD_LIBRARY_PATH";
+          packages = buildDeps ++ [ rust-toolchain ];
+        };
     in
     {
-      devShell = pkgs.mkShell {
-        buildInputs = packages;
-        shellHook = ''
-        export LD_LIBRARY_PATH=${pkgs.lib.makeLibraryPath libraries}:$LD_LIBRARY_PATH
-        export XDG_DATA_DIRS=${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}:${pkgs.gtk3}/share/gsettings-schemas/${pkgs.gtk3.name}:$XDG_DATA_DIRS
-        '';
+      _module.args.pkgs = import inputs.nixpkgs {
+        inherit system;
+        overlays = [ (import inputs.rust-overlay) ];
+      };
+
+      formatter = pkgs.alejandra;
+
+      devShells.default = self'.devShells.msrv;
+      devShells.msrv = (mkDevShell rust-toolchain);
+      devShells.stable = (mkDevShell pkgs.rust-bin.stable.latest.default);
+      devShells.nightly = (mkDevShell (pkgs.rust-bin.selectLatestNightlyWith (toolchain: toolchain.default)));
     };
-  });
+  };
 }

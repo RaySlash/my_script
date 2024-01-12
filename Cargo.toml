@@ -1,9 +1,7 @@
 [package]
 name = "joblog"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 chrono = "0.4.31"
@@ -11,6 +9,3 @@ csv = "1.3.0"
 dioxus = "0.4.3"
 fs = "0.0.5"
 serde = { version = "1.0.193", features = ["derive"] }
-
-[target.'cfg(windows)'.dependencies]
-winapi = { version = "*", features = ["winuser","wincon","shellapi"] }
